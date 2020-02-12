@@ -82,14 +82,22 @@ def configure(conf):
 #    conf.env.append_value('CXXFLAGS',['-Wall','-fno-exceptions', '-fno-rtti'])
     conf.env.append_value('CXXFLAGS', ['-Wall'])
 
-    conf.check_cfg(package='x11', uselib_store='X11', args="--cflags --libs",
-                   mandatory=True)
+    if sys.platform == 'linux':
+        conf.check_cfg(package='x11', uselib_store='X11', args="--cflags --libs",
+                       mandatory=True)
+    elif sys.platform == 'darwin':
+        conf.check_cfg(package='xquartz', uselib_store='XQUARTZ', args="--cflags --libs",
+                       mandatory=True)
 
     conf.check_cfg(package='fontconfig', uselib_store='FONTCONFIG', args="--cflags --libs",
                    mandatory=True)
 
-    conf.check_cfg(package='xft', uselib_store='XFT', args="--cflags --libs",
-                   mandatory=True)
+    if sys.platform == 'linux':
+        conf.check_cfg(package='xft', uselib_store='XFT', args="--cflags --libs",
+                       mandatory=True)
+    elif sys.platform == 'darwin':
+        pass
+
 
     conf.check_cfg(package='cairo', uselib_store='CAIRO', args="--cflags --libs",
                    atleast_version='1.10.0', mandatory=True)
@@ -257,6 +265,14 @@ def configure(conf):
     print('')
 
 def build(bld):
+    if sys.platform == 'linux':
+        ntk_lib = [ 'X11', 'FONTCONFIG', 'XFT', 'CAIRO', 'DL', 'M', 'PTHREAD' ]
+        ntk_images_lib = [ 'LIBJPEG', 'LIBPNG', 'LIBZ', 'DL', 'M', 'PTHREAD' ]
+        ntk_gl_lib = [ 'X11', 'DL', 'M', 'PTHREAD', 'GL']
+    elif sys.platform == 'darwin':
+        ntk_lib = [ 'XQUARTZ', 'FONTCONFIG', 'CAIRO', 'DL', 'M', 'PTHREAD' ]
+        ntk_images_lib = [ 'LIBJPEG', 'LIBPNG', 'LIBZ', 'DL', 'M', 'PTHREAD' ]
+        ntk_gl_lib = [ 'XQUARTZ', 'DL', 'M', 'PTHREAD', 'GL']
 
     bld.makelib(   source = '''
 src/Fl_Cairo_Graphics_Driver.cxx
@@ -419,7 +435,7 @@ src/numericsort.c
 src/flstring.c
 ''',
                    target       = 'ntk',
-                   uselib = [ 'X11', 'FONTCONFIG', 'XFT', 'CAIRO', 'DL', 'M', 'PTHREAD' ] )
+                   uselib = ntk_lib )
     
     bld.makelib(    source = '''
 src/fl_images_core.cxx
@@ -432,7 +448,7 @@ src/Fl_PNG_Image.cxx
 src/Fl_PNM_Image.cxx
 ''',
                     target = 'ntk_images',
-                    uselib = [ 'LIBJPEG', 'LIBPNG', 'LIBZ', 'DL', 'M', 'PTHREAD' ] )
+                    uselib = ntk_images_lib )
 
     if bld.env.USE_GL:
         bld.makelib( 
@@ -447,59 +463,112 @@ src/Fl_Gl_Overlay.cxx
 src/Fl_Gl_Window.cxx
 ''',
             target       = 'ntk_gl',
-            uselib = [ 'X11', 'DL', 'M', 'PTHREAD', 'GL'] )
+            uselib = ntk_gl_lib )
 
-    bld( features = 'subst',
-         source = 'ntk.pc.in',
-         target = 'ntk.pc',
-         encoding = 'utf8',
-         install_path = '${LIBDIR}/pkgconfig',
-         CFLAGS = ' '.join( CFLAGS ),
-         VERSION = VERSION,
-         PREFIX = bld.env.PREFIX )
+    if sys.platform == 'linux':
+        bld( features = 'subst',
+             source = 'ntk.pc.in',
+             target = 'ntk.pc',
+             encoding = 'utf8',
+             install_path = '${LIBDIR}/pkgconfig',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             PREFIX = bld.env.PREFIX )
 
-    bld( features = 'subst',
-         source = 'ntk_images.pc.in',
-         target = 'ntk_images.pc',
-         encoding = 'utf8',
-         install_path = '${LIBDIR}/pkgconfig',
-         CFLAGS = ' '.join( CFLAGS ),
-         VERSION = VERSION,
-         PREFIX = bld.env.PREFIX )
+        bld( features = 'subst',
+             source = 'ntk_images.pc.in',
+             target = 'ntk_images.pc',
+             encoding = 'utf8',
+             install_path = '${LIBDIR}/pkgconfig',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             PREFIX = bld.env.PREFIX )
 
-    bld( features = 'subst',
-         source = 'ntk_gl.pc.in',
-         target = 'ntk_gl.pc',
-         encoding = 'utf8',
-         install_path = '${LIBDIR}/pkgconfig',
-         CFLAGS = ' '.join( CFLAGS ),
-         VERSION = VERSION,
-         PREFIX = bld.env.PREFIX )
+        bld( features = 'subst',
+             source = 'ntk_gl.pc.in',
+             target = 'ntk_gl.pc',
+             encoding = 'utf8',
+             install_path = '${LIBDIR}/pkgconfig',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             PREFIX = bld.env.PREFIX )
 
-    bld( features = 'subst',
-         source = 'ntk-uninstalled.pc.in',
-         target = 'ntk-uninstalled.pc',
-         encoding = 'utf8',
-         CFLAGS = ' '.join( CFLAGS ),
-         VERSION = VERSION,
-         BUILD = os.getcwd() + '/' + out )
+        bld( features = 'subst',
+             source = 'ntk-uninstalled.pc.in',
+             target = 'ntk-uninstalled.pc',
+             encoding = 'utf8',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             BUILD = os.getcwd() + '/' + out )
 
-    bld( features = 'subst',
-         source = 'ntk_images.pc.in',
-         target = 'ntk_images-uninstalled.pc',
-         encoding = 'utf8',
-         VERSION = VERSION,
-         CFLAGS = ' '.join( CFLAGS ),
-         BUILD = os.getcwd() + '/' + out )
+        bld( features = 'subst',
+             source = 'ntk_images.pc.in',
+             target = 'ntk_images-uninstalled.pc',
+             encoding = 'utf8',
+             VERSION = VERSION,
+             CFLAGS = ' '.join( CFLAGS ),
+             BUILD = os.getcwd() + '/' + out )
 
 
-    bld( features = 'subst',
-         source = 'ntk_gl.pc.in',
-         target = 'ntk_gl-uninstalled.pc',
-         encoding = 'utf8',
-         VERSION = VERSION,
-         CFLAGS = ' '.join( CFLAGS ),
-         BUILD = os.getcwd() + '/' + out )
+        bld( features = 'subst',
+             source = 'ntk_gl.pc.in',
+             target = 'ntk_gl-uninstalled.pc',
+             encoding = 'utf8',
+             VERSION = VERSION,
+             CFLAGS = ' '.join( CFLAGS ),
+             BUILD = os.getcwd() + '/' + out )
+    if sys.platform == 'darwin':
+        bld( features = 'subst',
+             source = 'ntk_osx.pc.in',
+             target = 'ntk_osx.pc',
+             encoding = 'utf8',
+             install_path = '${LIBDIR}/pkgconfig',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             PREFIX = bld.env.PREFIX )
+
+        bld( features = 'subst',
+             source = 'ntk_images_osx.pc.in',
+             target = 'ntk_images_osx.pc',
+             encoding = 'utf8',
+             install_path = '${LIBDIR}/pkgconfig',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             PREFIX = bld.env.PREFIX )
+
+        bld( features = 'subst',
+             source = 'ntk_gl_osx.pc.in',
+             target = 'ntk_gl_osx.pc',
+             encoding = 'utf8',
+             install_path = '${LIBDIR}/pkgconfig',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             PREFIX = bld.env.PREFIX )
+
+        bld( features = 'subst',
+             source = 'ntk-uninstalled_osx.pc.in',
+             target = 'ntk-uninstalled_osx.pc',
+             encoding = 'utf8',
+             CFLAGS = ' '.join( CFLAGS ),
+             VERSION = VERSION,
+             BUILD = os.getcwd() + '/' + out )
+
+        bld( features = 'subst',
+             source = 'ntk_images_osx.pc.in',
+             target = 'ntk_images-uninstalled_osx.pc',
+             encoding = 'utf8',
+             VERSION = VERSION,
+             CFLAGS = ' '.join( CFLAGS ),
+             BUILD = os.getcwd() + '/' + out )
+
+
+        bld( features = 'subst',
+             source = 'ntk_gl_osx.pc.in',
+             target = 'ntk_gl-uninstalled.pc',
+             encoding = 'utf8',
+             VERSION = VERSION,
+             CFLAGS = ' '.join( CFLAGS ),
+             BUILD = os.getcwd() + '/' + out )
 
 
     bld.program(
